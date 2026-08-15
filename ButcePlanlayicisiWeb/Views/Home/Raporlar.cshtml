@@ -1,0 +1,345 @@
+﻿@model List<ButcePlanlayicisiWeb.Models.ButceKaydi>
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Raporlar - Bütçe Planlayıcısı</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    .excel-btn {
+    display: inline-block;
+    padding: 12px 20px;
+    background-color: #28a745;
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    margin-bottom: 25px;
+    }
+
+    .excel-btn:hover {
+    background-color: #218838;
+    }
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f8;
+            margin: 0;
+            padding: 30px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .grafik {
+            background: white;
+            padding: 25px;
+            margin-bottom: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+            .grafik h2 {
+                text-align: center;
+            }
+
+        .chart-container {
+            position: relative;
+            height: 400px;
+        }
+
+        .geri {
+            display: inline-block;
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            margin-bottom: 25px;
+        }
+
+            .geri:hover {
+                background-color: #0056b3;
+            }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+
+        <h1>📊 Bütçe Raporları</h1>
+
+        <a href="/" class="geri">
+            ← Ana Sayfaya Dön
+        </a>
+        <a href="/Home/ExcelAktar" class="excel-btn">
+            📥 Excel'e Aktar
+        </a>
+        <!-- Genel Gelir - Gider Grafiği -->
+
+        <div class="grafik">
+
+            <h2>💰 Gelir - Gider Dağılımı</h2>
+
+            <div class="chart-container">
+                <canvas id="pastaGrafik"></canvas>
+            </div>
+
+        </div>
+
+
+        <!-- Aylık Grafik -->
+
+        <div class="grafik">
+
+            <h2>📅 Aylık Gelir - Gider</h2>
+
+            <div class="chart-container">
+                <canvas id="aylikGrafik"></canvas>
+            </div>
+
+        </div>
+
+
+        <!-- Yıllık Grafik -->
+
+        <div class="grafik">
+
+            <h2>📆 Yıllık Gelir - Gider</h2>
+
+            <div class="chart-container">
+                <canvas id="yillikGrafik"></canvas>
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <script>
+
+        // -------------------------
+        // VERİLER
+        // -------------------------
+
+        const kayitlar = @Html.Raw(
+                        System.Text.Json.JsonSerializer.Serialize(Model)
+                );
+
+
+        // -------------------------
+        // GENEL GELİR - GİDER
+        // -------------------------
+
+        let toplamGelir = 0;
+        let toplamGider = 0;
+
+        kayitlar.forEach(kayit => {
+
+            toplamGelir += kayit.Gelir;
+            toplamGider += kayit.Gider;
+
+        });
+
+
+        new Chart(document.getElementById("pastaGrafik"), {
+
+            type: "pie",
+
+            data: {
+
+                labels: ["Gelir", "Gider"],
+
+                datasets: [{
+                    data: [toplamGelir, toplamGider]
+                }]
+
+            },
+
+            options: {
+
+                responsive: true,
+
+                maintainAspectRatio: false
+
+            }
+
+        });
+
+
+        // -------------------------
+        // AYLIK GRAFİK
+        // -------------------------
+
+        const aylar = [
+            "Ocak",
+            "Şubat",
+            "Mart",
+            "Nisan",
+            "Mayıs",
+            "Haziran",
+            "Temmuz",
+            "Ağustos",
+            "Eylül",
+            "Ekim",
+            "Kasım",
+            "Aralık"
+        ];
+
+        let aylikGelir = new Array(12).fill(0);
+        let aylikGider = new Array(12).fill(0);
+
+
+        kayitlar.forEach(kayit => {
+
+            const tarih = new Date(kayit.Tarih);
+
+            const ay = tarih.getMonth();
+
+            aylikGelir[ay] += kayit.Gelir;
+            aylikGider[ay] += kayit.Gider;
+
+        });
+
+
+        new Chart(document.getElementById("aylikGrafik"), {
+
+            type: "bar",
+
+            data: {
+
+                labels: aylar,
+
+                datasets: [
+
+                    {
+                        label: "Gelir",
+                        data: aylikGelir
+                    },
+
+                    {
+                        label: "Gider",
+                        data: aylikGider
+                    }
+
+                ]
+
+            },
+
+            options: {
+
+                responsive: true,
+
+                maintainAspectRatio: false,
+
+                scales: {
+
+                    y: {
+
+                        beginAtZero: true
+
+                    }
+
+                }
+
+            }
+
+        });
+
+
+        // -------------------------
+        // YILLIK GRAFİK
+        // -------------------------
+
+        const yillar = {};
+
+        kayitlar.forEach(kayit => {
+
+            const tarih = new Date(kayit.Tarih);
+
+            const yil = tarih.getFullYear();
+
+            if (!yillar[yil]) {
+
+                yillar[yil] = {
+                    gelir: 0,
+                    gider: 0
+                };
+
+            }
+
+            yillar[yil].gelir += kayit.Gelir;
+            yillar[yil].gider += kayit.Gider;
+
+        });
+
+
+        const yilEtiketleri = Object.keys(yillar);
+
+        const yillikGelir = yilEtiketleri.map(
+            yil => yillar[yil].gelir
+        );
+
+        const yillikGider = yilEtiketleri.map(
+            yil => yillar[yil].gider
+        );
+
+
+        new Chart(document.getElementById("yillikGrafik"), {
+
+            type: "bar",
+
+            data: {
+
+                labels: yilEtiketleri,
+
+                datasets: [
+
+                    {
+                        label: "Gelir",
+                        data: yillikGelir
+                    },
+
+                    {
+                        label: "Gider",
+                        data: yillikGider
+                    }
+
+                ]
+
+            },
+
+            options: {
+
+                responsive: true,
+
+                maintainAspectRatio: false,
+
+                scales: {
+
+                    y: {
+
+                        beginAtZero: true
+
+                    }
+
+                }
+
+            }
+
+        });
+
+    </script>
+
+</body>
+</html>    
